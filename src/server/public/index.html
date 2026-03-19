@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TikTok Likes & Saves Search</title>
+  <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f0f0f;
+      color: #e0e0e0;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-bottom: 24px;
+      color: #fff;
+    }
+
+    .controls {
+      max-width: 700px;
+      margin: 0 auto 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    #search {
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 1px solid #333;
+      background: #1a1a1a;
+      color: #fff;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    #search:focus { border-color: #fe2c55; }
+    #search::placeholder { color: #666; }
+
+    .filters {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      padding: 6px 16px;
+      border-radius: 20px;
+      border: 1px solid #333;
+      background: #1a1a1a;
+      color: #aaa;
+      cursor: pointer;
+      font-size: 0.875rem;
+      transition: all 0.15s;
+    }
+    .filter-btn:hover { border-color: #fe2c55; color: #fff; }
+    .filter-btn.active { background: #fe2c55; border-color: #fe2c55; color: #fff; }
+
+    .meta {
+      max-width: 700px;
+      margin: 0 auto 16px;
+      font-size: 0.8rem;
+      color: #666;
+    }
+
+    #results {
+      max-width: 700px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .card {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .card:hover { border-color: #fe2c55; background: #1f1f1f; }
+
+    .card-body { flex: 1; min-width: 0; }
+
+    .creator {
+      font-weight: 600;
+      font-size: 1rem;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .url {
+      font-size: 0.75rem;
+      color: #666;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .date {
+      font-size: 0.75rem;
+      color: #888;
+      margin-top: 4px;
+    }
+
+    .badge {
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .badge-liked  { background: #2a1a2a; color: #e040fb; border: 1px solid #6a1a6a; }
+    .badge-saved  { background: #1a2a2a; color: #40c4ff; border: 1px solid #1a5a6a; }
+    .badge-both   { background: #2a1a1a; color: #ff6e40; border: 1px solid #6a2a1a; }
+
+    .empty {
+      text-align: center;
+      color: #555;
+      padding: 48px 0;
+      font-size: 0.95rem;
+    }
+
+    .error {
+      max-width: 700px;
+      margin: 48px auto;
+      background: #2a1a1a;
+      border: 1px solid #6a2a2a;
+      border-radius: 10px;
+      padding: 20px;
+      color: #ff8a80;
+    }
+    .error code { display: block; margin-top: 8px; font-size: 0.85rem; color: #aaa; }
+  </style>
+</head>
+<body>
+  <h1>TikTok Likes &amp; Saves</h1>
+
+  <div class="controls">
+    <input id="search" type="text" placeholder="Search by creator, URL, or date..." autocomplete="off" />
+    <div class="filters">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="liked">Liked</button>
+      <button class="filter-btn" data-filter="saved">Saved</button>
+      <button class="filter-btn" data-filter="both">Both</button>
+    </div>
+  </div>
+
+  <div class="meta" id="meta"></div>
+  <div id="results"></div>
+
+  <script>
+    let allVideos = [];
+    let fuse = null;
+    let activeFilter = 'all';
+
+    const searchEl = document.getElementById('search');
+    const resultsEl = document.getElementById('results');
+    const metaEl = document.getElementById('meta');
+
+    async function init() {
+      try {
+        const res = await fetch('/api/videos');
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: res.statusText }));
+          showError(err.error || 'Failed to load videos.');
+          return;
+        }
+        allVideos = await res.json();
+        fuse = new Fuse(allVideos, {
+          keys: ['creator', 'url', 'date'],
+          threshold: 0.35,
+          includeScore: true,
+        });
+        render();
+      } catch (e) {
+        showError('Could not connect to server. Make sure the server is running.');
+      }
+    }
+
+    function getFiltered() {
+      const query = searchEl.value.trim();
+      let results = query
+        ? fuse.search(query).map(r => r.item)
+        : [...allVideos];
+
+      if (activeFilter !== 'all') {
+        results = results.filter(v => v.source === activeFilter);
+      }
+      return results;
+    }
+
+    function render() {
+      const results = getFiltered();
+      metaEl.textContent = `${results.length} of ${allVideos.length} videos`;
+
+      if (results.length === 0) {
+        resultsEl.innerHTML = '<div class="empty">No videos found.</div>';
+        return;
+      }
+
+      resultsEl.innerHTML = results.map(v => {
+        const badgeClass = `badge-${v.source}`;
+        const label = v.source === 'both' ? 'Liked + Saved'
+          : v.source === 'liked' ? 'Liked' : 'Saved';
+        const date = new Date(v.date).toLocaleDateString(undefined, {
+          year: 'numeric', month: 'short', day: 'numeric'
+        });
+        return `
+          <a class="card" href="${escHtml(v.url)}" target="_blank" rel="noopener">
+            <div class="card-body">
+              <div class="creator">${escHtml(v.creator)}</div>
+              <div class="url">${escHtml(v.url)}</div>
+              <div class="date">${escHtml(date)}</div>
+            </div>
+            <span class="badge ${badgeClass}">${label}</span>
+          </a>`;
+      }).join('');
+    }
+
+    function escHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function showError(msg) {
+      resultsEl.innerHTML = `
+        <div class="error">
+          <strong>Error loading videos</strong>
+          <code>${escHtml(msg)}</code>
+        </div>`;
+    }
+
+    searchEl.addEventListener('input', render);
+
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeFilter = btn.dataset.filter;
+        render();
+      });
+    });
+
+    init();
+  </script>
+</body>
+</html>
