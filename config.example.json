@@ -1,0 +1,13 @@
+{
+  "tiktok": {
+    "username": "your_tiktok_username"
+  },
+  "server": {
+    "port": 3000
+  },
+  "paths": {
+    "dataDir": "./data",
+    "downloadDir": "./data/raw",
+    "sessionFile": "./data/session/tiktok-auth.json"
+  }
+}
