@@ -1,0 +1,21 @@
+{
+  "name": "tiktok-likes-saves-search",
+  "version": "1.0.0",
+  "description": "Search your TikTok liked and saved videos using personal data export",
+  "scripts": {
+    "request": "ts-node src/index.ts request",
+    "download": "ts-node src/index.ts download",
+    "parse": "ts-node src/index.ts parse",
+    "serve": "ts-node src/index.ts serve"
+  },
+  "dependencies": {
+    "@types/express": "latest",
+    "@types/node": "latest",
+    "@types/unzipper": "latest",
+    "express": "latest",
+    "playwright": "latest",
+    "ts-node": "latest",
+    "typescript": "latest",
+    "unzipper": "latest"
+  }
+}
