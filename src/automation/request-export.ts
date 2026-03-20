@@ -20,10 +20,10 @@ export async function requestExport(): Promise<void> {
     }
   }
 
-  const { browser, context, page } = await launchBrowser(sessionFile);
+  const { close, context, page } = await launchBrowser(sessionFile);
 
   try {
-    await ensureLoggedIn(page, context, sessionFile);
+    await ensureLoggedIn(page, context);
 
     console.log("\nNavigating to TikTok settings...");
     await page.goto("https://www.tiktok.com/setting/", { waitUntil: "domcontentloaded" });
@@ -135,6 +135,6 @@ export async function requestExport(): Promise<void> {
     console.log("TikTok will email you when your data is ready (usually a few hours to a few days).");
     console.log("Then run: npm run download");
   } finally {
-    await browser.close();
+    await close();
   }
 }

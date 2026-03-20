@@ -13,10 +13,10 @@ export async function downloadExport(): Promise<void> {
   const statusFile = path.join(dataDir, "export-status.json");
   const zipPath = path.join(downloadDir, "tiktok-export.zip");
 
-  const { browser, context, page } = await launchBrowser(sessionFile);
+  const { close, context, page } = await launchBrowser(sessionFile);
 
   try {
-    await ensureLoggedIn(page, context, sessionFile);
+    await ensureLoggedIn(page, context);
 
     console.log("\nNavigating to Download your data page...");
     await page.goto("https://www.tiktok.com/setting/download-your-data", { waitUntil: "domcontentloaded" });
@@ -80,7 +80,7 @@ export async function downloadExport(): Promise<void> {
 
     fs.writeFileSync(statusFile, JSON.stringify(status, null, 2));
   } finally {
-    await browser.close();
+    await close();
   }
 
   // Auto-chain to parse

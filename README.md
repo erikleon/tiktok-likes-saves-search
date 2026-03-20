@@ -42,7 +42,9 @@ Edit `config.json` with your TikTok username and preferred paths:
 npm run request
 ```
 
-A browser window will open. Log into TikTok if prompted (your session is saved for future runs). The script navigates to Settings > Privacy > Download your data, selects JSON format, and submits the request.
+Your default Chrome browser will open using your existing profile, so you should already be logged into TikTok. The script navigates to Settings > Privacy > Download your data, selects JSON format, and submits the request.
+
+> **Note:** If Chrome is already running when you execute this command, the script will fall back to opening a fresh Chrome window. You may need to log in manually in that case.
 
 TikTok will email you when your export is ready — usually within a few hours, sometimes up to a few days.
 
@@ -52,7 +54,7 @@ TikTok will email you when your export is ready — usually within a few hours, 
 npm run download
 ```
 
-Opens a browser, navigates to the download page, and saves the zip to `data/raw/tiktok-export.zip`. Automatically runs the parse step on success.
+Opens Chrome with your existing profile, navigates to the download page, and saves the zip to `data/raw/tiktok-export.zip`. Automatically runs the parse step on success.
 
 ### Step 3 — Parse (if needed separately)
 
